@@ -15,8 +15,19 @@ const organizationRoutes = require('./routes/organizationRoutes');
 
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// Middleware to ensure DB connection on every request (crucial for Serverless lambdas)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Database connection failed. Please ensure MONGODB_URI is correctly configured in Vercel.',
+      error: err.message,
+    });
+  }
+});
 
 // Security Middlewares
 app.use(helmet());
@@ -76,12 +87,15 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`=======================================================`);
-  console.log(`🚀 Contract Localizer Backend API running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Base URL: http://localhost:${PORT}`);
-  console.log(`=======================================================`);
-});
+// Only bind to port if executed directly (not when required/imported as a serverless function)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`=======================================================`);
+    console.log(`🚀 Contract Localizer Backend API running on port ${PORT}`);
+    console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 Base URL: http://localhost:${PORT}`);
+    console.log(`=======================================================`);
+  });
+}
 
 module.exports = app;

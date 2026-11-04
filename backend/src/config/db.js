@@ -1,18 +1,28 @@
 const mongoose = require('mongoose');
 
+let cachedConnection = null;
+
 /**
- * Connect to MongoDB with retry logic and clean error handling.
+ * Connect to MongoDB with caching for serverless environments (Vercel) and standalone servers.
  */
 const connectDB = async () => {
+  if (cachedConnection && mongoose.connection.readyState >= 1) {
+    return cachedConnection;
+  }
+
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/employment-contract-localizer';
+
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/employment-contract-localizer', {
+    cachedConnection = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000,
+      bufferCommands: false, // Recommended for serverless to fail fast if disconnected
     });
-    console.log(`[MongoDB] Connected successfully: ${conn.connection.host}`);
+    console.log(`[MongoDB] Connected successfully: ${cachedConnection.connection.host}`);
+    return cachedConnection;
   } catch (error) {
     console.error(`[MongoDB Connection Error]: ${error.message}`);
-    // In dev or offline environments, warn clearly
-    console.warn('[MongoDB] Make sure your MongoDB instance is running or update MONGODB_URI in .env');
+    console.warn('[MongoDB] Make sure your MongoDB Atlas instance is running and accessible (0.0.0.0/0 whitelist for Vercel).');
+    throw error;
   }
 };
 
