@@ -24,7 +24,7 @@ export default function DocumentDetailsPage() {
   const router = useRouter();
   const docId = params?.id as string;
 
-  const [document, setDocument] = useState<GeneratedDocument | null>(null);
+  const [contractDoc, setContractDoc] = useState<GeneratedDocument | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function DocumentDetailsPage() {
       try {
         const res = await api.get(`/documents/${docId}`);
         if (res.data?.success) {
-          setDocument(res.data.data);
+          setContractDoc(res.data.data);
         }
       } catch (err) {
         toast.error('Failed to load contract details');
@@ -45,7 +45,7 @@ export default function DocumentDetailsPage() {
   }, [docId]);
 
   const handleDownload = async (format: 'pdf' | 'docx') => {
-    if (!document) return;
+    if (!contractDoc) return;
     try {
       toast.loading(`Exporting ${format.toUpperCase()}...`, { id: 'export' });
       const res = await api.get(`/documents/${docId}/${format}`, {
@@ -54,10 +54,10 @@ export default function DocumentDetailsPage() {
 
       const blob = new Blob([res.data]);
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${document.title.replace(/\s+/g, '_')}.${format}`);
-      document.body.appendChild(link);
+      link.setAttribute('download', `${contractDoc.title.replace(/\s+/g, '_')}.${format}`);
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
       toast.success(`${format.toUpperCase()} exported successfully!`, { id: 'export' });
@@ -74,7 +74,7 @@ export default function DocumentDetailsPage() {
     );
   }
 
-  if (!document) {
+  if (!contractDoc) {
     return (
       <div className="min-h-screen bg-slate-50">
         <Navbar />
@@ -132,11 +132,11 @@ export default function DocumentDetailsPage() {
               {/* Header */}
               <div className="border-b border-slate-100 pb-6 text-center">
                 <span className="text-xs font-bold uppercase tracking-wider text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
-                  {document.documentType.replace(/_/g, ' ')}
+                  {contractDoc.documentType.replace(/_/g, ' ')}
                 </span>
-                <h1 className="text-2xl font-extrabold text-slate-900 mt-3">{document.title}</h1>
+                <h1 className="text-2xl font-extrabold text-slate-900 mt-3">{contractDoc.title}</h1>
                 <p className="text-xs text-slate-500 mt-1">
-                  Jurisdiction: <span className="font-semibold text-slate-700">{document.jurisdictionSnapshot.name}</span> ({document.jurisdictionSnapshot.code}) • Version: {document.jurisdictionSnapshot.versionUsed}
+                  Jurisdiction: <span className="font-semibold text-slate-700">{contractDoc.jurisdictionSnapshot.name}</span> ({contractDoc.jurisdictionSnapshot.code}) • Version: {contractDoc.jurisdictionSnapshot.versionUsed}
                 </p>
               </div>
 
@@ -146,22 +146,22 @@ export default function DocumentDetailsPage() {
                   Appointment Key Provisions
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-xs text-slate-700">
-                  <div><span className="text-slate-400">Candidate:</span> <span className="font-semibold">{document.candidate.fullName}</span></div>
-                  <div><span className="text-slate-400">Role:</span> <span className="font-semibold">{document.roleDetails.jobTitle}</span></div>
-                  <div><span className="text-slate-400">Start Date:</span> <span className="font-semibold">{new Date(document.roleDetails.startDate).toLocaleDateString()}</span></div>
-                  <div><span className="text-slate-400">Base Salary:</span> <span className="font-semibold">{document.compensation.currency} {Number(document.compensation.baseSalary).toLocaleString()} ({document.compensation.payFrequency})</span></div>
-                  <div><span className="text-slate-400">Work Mode:</span> <span className="font-semibold">{document.roleDetails.workArrangement}</span></div>
-                  <div><span className="text-slate-400">Department:</span> <span className="font-semibold">{document.roleDetails.department}</span></div>
+                  <div><span className="text-slate-400">Candidate:</span> <span className="font-semibold">{contractDoc.candidate.fullName}</span></div>
+                  <div><span className="text-slate-400">Role:</span> <span className="font-semibold">{contractDoc.roleDetails.jobTitle}</span></div>
+                  <div><span className="text-slate-400">Start Date:</span> <span className="font-semibold">{new Date(contractDoc.roleDetails.startDate).toLocaleDateString()}</span></div>
+                  <div><span className="text-slate-400">Base Salary:</span> <span className="font-semibold">{contractDoc.compensation.currency} {Number(contractDoc.compensation.baseSalary).toLocaleString()} ({contractDoc.compensation.payFrequency})</span></div>
+                  <div><span className="text-slate-400">Work Mode:</span> <span className="font-semibold">{contractDoc.roleDetails.workArrangement}</span></div>
+                  <div><span className="text-slate-400">Department:</span> <span className="font-semibold">{contractDoc.roleDetails.department}</span></div>
                 </div>
               </div>
 
               {/* Applied Clauses List */}
               <div className="space-y-6">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                  Mandatory & Applied Clauses ({document.appliedClauses.length})
+                  Mandatory & Applied Clauses ({contractDoc.appliedClauses.length})
                 </h3>
 
-                {document.appliedClauses.map((clause, idx) => (
+                {contractDoc.appliedClauses.map((clause, idx) => (
                   <div key={idx} className="border-l-2 border-sky-600 pl-4 py-1">
                     <div className="flex items-center justify-between mb-1">
                       <h4 className="text-sm font-bold text-slate-900">
@@ -184,12 +184,12 @@ export default function DocumentDetailsPage() {
                   </div>
                 ))}
 
-                {document.customClausesAdded && document.customClausesAdded.length > 0 && (
+                {contractDoc.customClausesAdded && contractDoc.customClausesAdded.length > 0 && (
                   <div className="pt-4 border-t border-slate-100">
                     <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
                       Supplementary Company Provisions
                     </h4>
-                    {document.customClausesAdded.map((c, i) => (
+                    {contractDoc.customClausesAdded.map((c, i) => (
                       <div key={i} className="border-l-2 border-teal-600 pl-4 py-1 mb-4">
                         <h5 className="text-xs font-bold text-teal-800">{c.title}</h5>
                         <p className="text-xs text-slate-600 mt-1">{c.content}</p>
@@ -201,7 +201,7 @@ export default function DocumentDetailsPage() {
 
               {/* Legal Disclaimer Box */}
               <div className="mt-8 p-4 rounded-xl bg-slate-100 border border-slate-200 text-[11px] text-slate-500 leading-relaxed">
-                {document.legalDisclaimer}
+                {contractDoc.legalDisclaimer}
               </div>
             </div>
           </div>
@@ -216,22 +216,22 @@ export default function DocumentDetailsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">Statutory Compliance Verified</h3>
-                  <p className="text-xs text-slate-500">Governing Law: {document.jurisdictionSnapshot.governingLaw}</p>
+                  <p className="text-xs text-slate-500">Governing Law: {contractDoc.jurisdictionSnapshot.governingLaw}</p>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-3">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Jurisdiction Code:</span>
-                  <span className="font-mono font-bold text-slate-800">{document.jurisdictionSnapshot.code}</span>
+                  <span className="font-mono font-bold text-slate-800">{contractDoc.jurisdictionSnapshot.code}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Rule Matrix Version:</span>
-                  <span className="font-semibold text-slate-800">{document.jurisdictionSnapshot.versionUsed}</span>
+                  <span className="font-semibold text-slate-800">{contractDoc.jurisdictionSnapshot.versionUsed}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Non-Compete Enforceability:</span>
-                  <span className="font-semibold text-rose-600">{document.jurisdictionSnapshot.nonCompeteStatus || 'Enforced per statute'}</span>
+                  <span className="font-semibold text-rose-600">{contractDoc.jurisdictionSnapshot.nonCompeteStatus || 'Enforced per statute'}</span>
                 </div>
               </div>
             </div>
@@ -244,7 +244,7 @@ export default function DocumentDetailsPage() {
               </div>
 
               <div className="space-y-4">
-                {document.auditTrail?.map((log, idx) => (
+                {contractDoc.auditTrail?.map((log, idx) => (
                   <div key={idx} className="relative pl-5 pb-2 border-l border-slate-200 last:border-0 last:pb-0">
                     <div className="absolute -left-1.5 top-0.5 w-3 h-3 rounded-full bg-sky-500 border-2 border-white" />
                     <div className="text-xs font-bold text-slate-800">{log.action.replace(/_/g, ' ')}</div>

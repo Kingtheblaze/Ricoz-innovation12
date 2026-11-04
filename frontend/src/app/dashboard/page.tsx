@@ -51,10 +51,10 @@ export default function DashboardPage() {
 
       const blob = new Blob([res.data]);
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = url;
       link.setAttribute('download', `Contract_${candidateName.replace(/\s+/g, '_')}.${format}`);
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
       toast.success(`${format.toUpperCase()} downloaded successfully!`, { id: 'download' });
