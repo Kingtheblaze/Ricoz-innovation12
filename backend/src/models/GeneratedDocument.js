@@ -42,6 +42,28 @@ const GeneratedDocumentSchema = new mongoose.Schema(
       enum: ['OFFER_LETTER', 'EMPLOYMENT_AGREEMENT', 'FULL_COMPLIANCE_BUNDLE'],
       default: 'FULL_COMPLIANCE_BUNDLE',
     },
+    status: {
+      type: String,
+      enum: ['DRAFT', 'SENT', 'SIGNED', 'EXPIRED', 'REVOKED'],
+      default: 'DRAFT',
+      index: true,
+    },
+    signingToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    signingTokenExpiresAt: {
+      type: Date,
+    },
+    signature: {
+      signedBy: String,
+      signedAt: Date,
+      signatureImage: String,
+      signerIp: String,
+      signerEmail: String,
+    },
     title: {
       type: String,
       required: true,

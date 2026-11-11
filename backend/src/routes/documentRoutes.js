@@ -276,4 +276,251 @@ router.get('/:id/docx', protect, async (req, res) => {
   }
 });
 
+/**
+ * @route   PATCH /api/documents/:id/clauses/:clauseKey
+ * @desc    In-place discretionary clause editing with compliance guardrails
+ */
+router.patch('/:id/clauses/:clauseKey', protect, authorize('Admin', 'HR'), async (req, res) => {
+  try {
+    const { id, clauseKey } = req.params;
+    const { renderedText } = req.body;
+
+    if (!renderedText || typeof renderedText !== 'string') {
+      return res.status(400).json({ success: false, message: 'Updated clause text is required.' });
+    }
+
+    const doc = await GeneratedDocument.findOne({
+      _id: id,
+      organizationId: req.organization._id,
+    });
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Document not found.' });
+    }
+
+    const clauseIndex = doc.appliedClauses.findIndex((c) => c.clauseKey === clauseKey);
+    if (clauseIndex === -1) {
+      return res.status(404).json({ success: false, message: `Clause [${clauseKey}] not found in document.` });
+    }
+
+    const targetClause = doc.appliedClauses[clauseIndex];
+    if (targetClause.isMandatory) {
+      return res.status(403).json({
+        success: false,
+        message: 'Statutory mandatory clauses cannot be modified without statutory amendment.',
+      });
+    }
+
+    targetClause.renderedText = renderedText;
+    targetClause.wasCustomized = true;
+
+    doc.auditTrail.push({
+      action: 'CUSTOM_CLAUSE_OVERRIDDEN',
+      performedBy: req.user._id,
+      performedByName: req.user.fullName,
+      timestamp: new Date(),
+      details: { clauseKey },
+    });
+
+    await doc.save();
+    res.json({ success: true, data: doc });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Clause update failed', error: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/documents/:id/send
+ * @desc    Generate secure token and mark document as sent for candidate e-signature
+ */
+router.post('/:id/send', protect, authorize('Admin', 'HR'), async (req, res) => {
+  try {
+    const doc = await GeneratedDocument.findOne({
+      _id: req.params.id,
+      organizationId: req.organization._id,
+    });
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Document not found.' });
+    }
+
+    const token = crypto.randomBytes(24).toString('hex');
+    doc.signingToken = token;
+    doc.signingTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days validity
+    doc.status = 'SENT';
+
+    doc.auditTrail.push({
+      action: 'VIEWED',
+      performedBy: req.user._id,
+      performedByName: req.user.fullName,
+      timestamp: new Date(),
+      details: { event: 'SENT_FOR_E_SIGNATURE', recipient: doc.candidate.email },
+    });
+
+    await doc.save();
+    res.json({ success: true, data: { signingToken: token, status: doc.status } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to issue signing token', error: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/documents/sign/:token
+ * @desc    Public endpoint for candidate to view agreement via secure token
+ */
+router.get('/sign/:token', async (req, res) => {
+  try {
+    const doc = await GeneratedDocument.findOne({
+      signingToken: req.params.token,
+    });
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Signing invitation link is invalid or expired.' });
+    }
+
+    res.json({ success: true, data: doc });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to retrieve document', error: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/documents/sign/:token
+ * @desc    Public endpoint to execute digital e-signature
+ */
+router.post('/sign/:token', async (req, res) => {
+  try {
+    const { fullName, signatureImage } = req.body;
+    if (!fullName || !signatureImage) {
+      return res.status(400).json({ success: false, message: 'Candidate full name and signature image are required.' });
+    }
+
+    const doc = await GeneratedDocument.findOne({
+      signingToken: req.params.token,
+    });
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Signing token is invalid or expired.' });
+    }
+
+    doc.status = 'SIGNED';
+    doc.signature = {
+      signedBy: fullName,
+      signedAt: new Date(),
+      signatureImage,
+      signerIp: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+      signerEmail: doc.candidate.email,
+    };
+
+    doc.auditTrail.push({
+      action: 'GENERATED',
+      performedByName: `${fullName} (Candidate)`,
+      timestamp: new Date(),
+      details: { event: 'DIGITALLY_EXECUTED_BY_CANDIDATE' },
+    });
+
+    await doc.save();
+    res.json({ success: true, data: { status: doc.status, signedAt: doc.signature.signedAt } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Digital execution failed', error: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/documents/scan-risk
+ * @desc    AI & Heuristic statutory compliance risk scanner
+ */
+router.post('/scan-risk', protect, async (req, res) => {
+  try {
+    const { text, jurisdictionCode } = req.body;
+    if (!text) {
+      return res.status(400).json({ success: false, message: 'Clause text is required.' });
+    }
+
+    const issues = [];
+    const normalized = text.toLowerCase();
+    const jur = (jurisdictionCode || 'US-CA').toUpperCase();
+
+    // 1. California Checks
+    if (jur === 'US-CA') {
+      if (
+        normalized.includes('compete') ||
+        normalized.includes('non-compete') ||
+        normalized.includes('restrictive covenant') ||
+        normalized.includes('directly or indirectly engage in')
+      ) {
+        issues.push({
+          severity: 'HIGH',
+          ruleKey: 'CA_SB699_NON_COMPETE',
+          title: 'Unlawful Non-Compete Covenant',
+          statute: 'California Business & Professions Code § 16600, SB 699, AB 1076',
+          foundTextSample: text.substring(0, 100),
+          explanation: 'Post-employment non-compete agreements are void ab initio in California and subject employers to civil liability and private right of action.',
+          recommendation: 'Remove restrictive non-compete covenants entirely. Use confidentiality and trade secret protections instead.',
+        });
+      }
+
+      if (
+        (normalized.includes('invention') || normalized.includes('intellectual property')) &&
+        !normalized.includes('2870')
+      ) {
+        issues.push({
+          severity: 'MEDIUM',
+          ruleKey: 'CA_LC2870_INVENTIONS',
+          title: 'Missing Mandatory Labor Code § 2870 Carve-Out',
+          statute: 'California Labor Code § 2870',
+          foundTextSample: 'Inventions assignment without statutory notice',
+          explanation: 'Employers must provide written notice that IP assignments do not apply to inventions developed entirely on employee own time without company assets.',
+          recommendation: 'Append statutory notice: "Pursuant to CA Labor Code § 2870, this assignment does not apply to inventions developed entirely on personal time without employer resources."',
+        });
+      }
+    }
+
+    // 2. UK Checks
+    if (jur === 'GB-UK') {
+      if (
+        normalized.includes('2 days') ||
+        normalized.includes('48 hours') ||
+        normalized.includes('immediate termination') ||
+        normalized.includes('at will')
+      ) {
+        issues.push({
+          severity: 'HIGH',
+          ruleKey: 'UK_ERA1996_NOTICE',
+          title: 'Sub-Statutory Termination Notice',
+          statute: 'Employment Rights Act 1996 Section 86',
+          foundTextSample: text.substring(0, 100),
+          explanation: 'UK law imposes minimum statutory notice of at least 1 week per year of service (up to 12 weeks). At-will termination does not exist in English law.',
+          recommendation: 'Incorporate standard statutory notice periods (minimum 1 week to 12 weeks based on continuous service).',
+        });
+      }
+    }
+
+    // 3. New York Checks
+    if (jur === 'US-NY') {
+      if (normalized.includes('salary history') || normalized.includes('prior compensation')) {
+        issues.push({
+          severity: 'HIGH',
+          ruleKey: 'NY_SALARY_HISTORY_BAN',
+          title: 'Unlawful Salary History Inquiry',
+          statute: 'New York Labor Law § 194-a',
+          foundTextSample: text.substring(0, 100),
+          explanation: 'Inquiring about or setting wages based on prior compensation history is unlawful in New York State.',
+          recommendation: 'Base all compensation strictly on role salary band transparency.',
+        });
+      }
+    }
+
+    const score = Math.max(10, 100 - issues.length * 30);
+    const summary = issues.length === 0 ? 'Compliant' : `${issues.length} statutory liabilities detected`;
+
+    res.json({
+      success: true,
+      data: { score, issues, summary },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Risk scan failed', error: error.message });
+  }
+});
+
 module.exports = router;

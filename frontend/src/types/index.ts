@@ -69,10 +69,22 @@ export interface AuditTrailItem {
   details?: Record<string, any>;
 }
 
+export interface SignatureDetails {
+  signedBy?: string;
+  signedAt?: string;
+  signatureImage?: string; // base64 data url
+  signerIp?: string;
+  signerEmail?: string;
+}
+
 export interface GeneratedDocument {
   _id: string;
   title: string;
   documentType: 'OFFER_LETTER' | 'EMPLOYMENT_AGREEMENT' | 'FULL_COMPLIANCE_BUNDLE';
+  status?: 'DRAFT' | 'SENT' | 'SIGNED' | 'EXPIRED' | 'REVOKED';
+  signingToken?: string;
+  signingTokenExpiresAt?: string;
+  signature?: SignatureDetails;
   candidate: {
     fullName: string;
     email: string;
@@ -114,4 +126,21 @@ export interface GeneratedDocument {
   legalDisclaimer: string;
   auditTrail: AuditTrailItem[];
   createdAt: string;
+}
+
+export interface TeamMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'Admin' | 'HR' | 'Viewer';
+  createdAt: string;
+}
+
+export interface WebhookConfig {
+  _id?: string;
+  url: string;
+  events: string[];
+  secretKey: string;
+  isActive: boolean;
+  createdAt?: string;
 }

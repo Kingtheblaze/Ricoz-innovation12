@@ -23,7 +23,9 @@ export default function Navbar() {
   const navLinks = [
     { name: 'Dashboard', href: '/dashboard', icon: FileText },
     { name: 'Generate Contract', href: '/generate', icon: PlusCircle },
-    { name: 'Rule Matrices', href: '/jurisdictions', icon: Globe2 },
+    { name: 'Compare Jurisdictions', href: '/jurisdictions/compare', icon: Globe2 },
+    { name: 'Risk Scanner', href: '/scanner', icon: ShieldCheck },
+    { name: 'Team & API', href: '/settings/team', icon: Building2 },
   ];
 
   return (

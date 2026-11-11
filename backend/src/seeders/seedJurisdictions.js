@@ -210,7 +210,130 @@ async function seed() {
     await caJurisdiction.save();
     await ukJurisdiction.save();
 
-    console.log('[Seeder] Successfully seeded California (US-CA) and United Kingdom (GB-UK) rule matrices!');
+    // 3. New York Jurisdiction (US-NY)
+    const newYorkRules = [
+      {
+        clauseKey: 'at_will_employment_ny',
+        title: 'At-Will Employment Status',
+        category: 'employment_status',
+        isMandatory: true,
+        allowCompanyCustomization: false,
+        legalReference: 'New York Common Law at-will presumption',
+        contentTemplate:
+          'Employment with {{company_name}} is strictly at-will. Either {{candidate_name}} or {{company_name}} may terminate the employment relationship at any time, with or without cause, and with or without notice.',
+        description: 'New York state at-will employment doctrine.',
+      },
+      {
+        clauseKey: 'wage_theft_prevention_ny',
+        title: 'Wage Theft Prevention Act Notice (NYLL § 195.1)',
+        category: 'compensation_pay_transparency',
+        isMandatory: true,
+        allowCompanyCustomization: false,
+        legalReference: 'New York Labor Law § 195.1',
+        contentTemplate:
+          'In compliance with the New York Wage Theft Prevention Act, {{candidate_name}}\'s regular pay rate is {{currency}} {{base_salary}} payable on a {{pay_frequency}} schedule. The designated regular payday is designated in the employee handbook. Overtime status is classified as Exempt/Non-Exempt per FLSA and NYLL.',
+        description: 'Mandatory written wage statement notice on hiring in NY.',
+      },
+      {
+        clauseKey: 'salary_history_ban_ny',
+        title: 'Salary History Inquiry Prohibition',
+        category: 'compensation_pay_transparency',
+        isMandatory: true,
+        allowCompanyCustomization: false,
+        legalReference: 'New York Labor Law § 194-a',
+        contentTemplate:
+          '{{company_name}} confirms that {{candidate_name}}\'s compensation has been determined independently of any prior wage history, in compliance with NY Labor Law Section 194-a.',
+        description: 'New York salary history inquiry prohibition.',
+      },
+    ];
+
+    const nyJurisdiction = new Jurisdiction({
+      code: 'US-NY',
+      name: 'New York, USA',
+      regionType: 'US_STATE',
+      countryCode: 'US',
+      currentVersion: '2026.1',
+      isActive: true,
+      governingLawDescription: 'State of New York and applicable federal laws of the United States',
+      standardCurrency: 'USD',
+      statutoryNoticeWeeks: 0,
+      atWillDoctrineApplies: true,
+      nonCompeteEnforceability: 'RESTRICTED_REASONABLE',
+      rules: newYorkRules,
+      versionHistory: [
+        {
+          version: '2026.1',
+          effectiveDate: new Date('2026-01-01'),
+          summaryOfChanges: 'Initial rule matrix with WTPA Notice and Salary History ban.',
+          rulesSnapshot: newYorkRules,
+        },
+      ],
+    });
+
+    // 4. Texas Jurisdiction (US-TX)
+    const texasRules = [
+      {
+        clauseKey: 'at_will_employment_tx',
+        title: 'At-Will Employment Status',
+        category: 'employment_status',
+        isMandatory: true,
+        allowCompanyCustomization: false,
+        legalReference: 'Texas Labor Code § 21.051',
+        contentTemplate:
+          'Employment with {{company_name}} is at-will. {{candidate_name}} or {{company_name}} may terminate employment at any time for any reason or no reason, without advance notice.',
+        description: 'Texas at-will doctrine.',
+      },
+      {
+        clauseKey: 'payday_law_tx',
+        title: 'Texas Payday Law Schedule',
+        category: 'compensation_pay_transparency',
+        isMandatory: true,
+        allowCompanyCustomization: false,
+        legalReference: 'Texas Labor Code Chapter 61',
+        contentTemplate:
+          'In compliance with the Texas Payday Law, {{candidate_name}} shall receive base compensation of {{currency}} {{base_salary}} disbursed on a {{pay_frequency}} schedule at designated regular pay intervals.',
+        description: 'Texas Payday Law compliance.',
+      },
+      {
+        clauseKey: 'covenant_not_to_compete_tx',
+        title: 'Reasonable Restrictive Covenant (Tex. Bus. & Com. Code § 15.50)',
+        category: 'non_compete_restrictive_covenants',
+        isMandatory: true,
+        allowCompanyCustomization: true,
+        legalReference: 'Tex. Bus. & Com. Code § 15.50(a)',
+        contentTemplate:
+          'Any post-employment non-compete covenant enforced by {{company_name}} is strictly ancillary to an otherwise enforceable agreement (including the provision of proprietary confidential information) and contains reasonable limitations as to time, geographical area, and scope of activity to be restrained.',
+        description: 'Texas statutory enforceability standards for restrictive covenants.',
+      },
+    ];
+
+    const txJurisdiction = new Jurisdiction({
+      code: 'US-TX',
+      name: 'Texas, USA',
+      regionType: 'US_STATE',
+      countryCode: 'US',
+      currentVersion: '2026.1',
+      isActive: true,
+      governingLawDescription: 'State of Texas and applicable federal laws of the United States',
+      standardCurrency: 'USD',
+      statutoryNoticeWeeks: 0,
+      atWillDoctrineApplies: true,
+      nonCompeteEnforceability: 'RESTRICTED_REASONABLE',
+      rules: texasRules,
+      versionHistory: [
+        {
+          version: '2026.1',
+          effectiveDate: new Date('2026-01-01'),
+          summaryOfChanges: 'Initial Texas labor law matrix with Texas Payday Law and Tex. Bus. & Com. Code § 15.50 standards.',
+          rulesSnapshot: texasRules,
+        },
+      ],
+    });
+
+    await nyJurisdiction.save();
+    await txJurisdiction.save();
+
+    console.log('[Seeder] Successfully seeded California, United Kingdom, New York, and Texas rule matrices!');
     await mongoose.connection.close();
     process.exit(0);
   } catch (err) {
