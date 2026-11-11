@@ -26,6 +26,7 @@ export default function Navbar() {
     { name: 'Compare Jurisdictions', href: '/jurisdictions/compare', icon: Globe2 },
     { name: 'Risk Scanner', href: '/scanner', icon: ShieldCheck },
     { name: 'Team & API', href: '/settings/team', icon: Building2 },
+    { name: 'Admin Console', href: '/admin', icon: UserCheck },
   ];
 
   return (

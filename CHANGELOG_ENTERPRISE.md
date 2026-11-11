@@ -121,3 +121,4 @@ We transitioned JurisFlow from an MVP / internal tool into an **enterprise-ready
      - `MONGODB_URI` (MongoDB Atlas connection string)
      - `JWT_ACCESS_SECRET` (Random 32-character string)
      - `NODE_ENV=production`
+

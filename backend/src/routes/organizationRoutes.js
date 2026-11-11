@@ -43,4 +43,39 @@ router.put('/', protect, authorize('Admin'), async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/organization/audit-ledger
+ * @desc    Get complete organization compliance audit ledger (Admin only)
+ */
+router.get('/audit-ledger', protect, authorize('Admin'), async (req, res) => {
+  try {
+    const GeneratedDocument = require('../models/GeneratedDocument');
+    const docs = await GeneratedDocument.find({ organizationId: req.organization._id })
+      .select('title candidate roleDetails jurisdictionSnapshot status auditTrail createdAt')
+      .sort({ createdAt: -1 });
+
+    const auditLedger = [];
+    docs.forEach((doc) => {
+      doc.auditTrail.forEach((log) => {
+        auditLedger.push({
+          documentId: doc._id,
+          documentTitle: doc.title,
+          candidateName: doc.candidate.fullName,
+          jurisdiction: doc.jurisdictionSnapshot.code,
+          status: doc.status,
+          action: log.action,
+          performedByName: log.performedByName || 'System / Candidate',
+          timestamp: log.timestamp,
+          details: log.details,
+        });
+      });
+    });
+
+    auditLedger.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json({ success: true, count: auditLedger.length, data: auditLedger });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
