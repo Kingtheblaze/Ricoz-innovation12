@@ -10,7 +10,7 @@ const connectDB = async () => {
     return cachedConnection;
   }
 
-  const uri = process.env.MONGODB_URI || 'mongodb+srv://hedasambhav:hedasambhav@cluster0.ppnbyll.mongodb.net/Entries?retryWrites=true&w=majority';
+  const uri = process.env.MONGODB_URI || 'mongodb+srv://hedasambhav:hedasambhav123@cluster0.ppnbyll.mongodb.net/Entries?retryWrites=true&w=majority';
 
   try {
     cachedConnection = await mongoose.connect(uri, {

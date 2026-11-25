@@ -155,7 +155,7 @@ const ukRules = [
 
 async function seed() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://hedasambhav:hedasambhav@cluster0.ppnbyll.mongodb.net/Entries?retryWrites=true&w=majority');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://hedasambhav:hedasambhav123@cluster0.ppnbyll.mongodb.net/Entries?retryWrites=true&w=majority');
     console.log('[Seeder] Connected to database');
 
     await Jurisdiction.deleteMany({});
